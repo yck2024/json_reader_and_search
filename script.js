@@ -45,7 +45,21 @@ function displayCards(data) {
     const cardContainer = document.getElementById('cardContainer');
     cardContainer.innerHTML = '';
 
-    data.forEach(item => {
+    const itemsToShow = data.slice(0, 500);
+
+    if (data.length > 500) {
+        const remainingCount = data.length - 500;
+        const loadMoreContainer = document.createElement('div');
+        loadMoreContainer.className = 'col-12 text-center mb-4';
+        loadMoreContainer.innerHTML = `
+            <button class="btn btn-primary" onclick="loadAllItems()">
+                Load ${remainingCount} More Items
+            </button>
+        `;
+        cardContainer.appendChild(loadMoreContainer);
+    }
+
+    itemsToShow.forEach(item => {
         const card = document.createElement('div');
         card.className = 'col-md-4 mb-4';
         card.innerHTML = `
@@ -62,6 +76,14 @@ function displayCards(data) {
         `;
         cardContainer.appendChild(card);
     });
+}
+
+function loadAllItems() {
+    if (jsonData) {
+        const cardContainer = document.getElementById('cardContainer');
+        cardContainer.innerHTML = '';
+        displayCards(jsonData);
+    }
 }
 
 function clearData() {
