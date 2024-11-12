@@ -14,4 +14,14 @@ body {
 
 #searchInput {
     margin-bottom: 20px;
+}
+
+#migrateFilter {
+    margin-bottom: 20px;
+    height: auto;
+    min-height: 38px;
+}
+
+#migrateFilter option {
+    padding: 8px;
 } 

@@ -14,6 +14,17 @@
             <input type="file" id="fileInput" class="form-control" accept=".json" style="width: 80%;">
             <button id="clearButton" class="btn btn-danger" onclick="clearData()">Clear Data</button>
         </div>
+        <div class="mb-3">
+            <select id="migrateFilter" class="form-select" multiple>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+                <option value="?">?</option>
+                <option value="Info">Info</option>
+                <option value="N/A">N/A</option>
+                <option value="Title">Title</option>
+                <option value="VM">VM</option>
+            </select>
+        </div>
         <input type="text" id="searchInput" class="form-control" placeholder="Search...">
         <div id="cardContainer" class="row"></div>
     </div>

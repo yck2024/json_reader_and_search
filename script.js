@@ -1,5 +1,6 @@
 let jsonData = null;
 let currentFilteredData = null;
+let selectedMigrateValues = [];
 
 window.addEventListener('load', function() {
     const savedData = localStorage.getItem('cardData');
@@ -27,12 +28,12 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
 });
 
 document.getElementById('searchInput').addEventListener('input', function(e) {
-    if (jsonData) {
-        const searchTerm = e.target.value.toLowerCase();
-        currentFilteredData = searchInJson(jsonData, searchTerm);
-        document.getElementById('cardContainer').dataset.showAll = 'false';
-        displayCards(currentFilteredData);
-    }
+    filterAndDisplayData();
+});
+
+document.getElementById('migrateFilter').addEventListener('change', function(e) {
+    selectedMigrateValues = Array.from(e.target.selectedOptions).map(option => option.value);
+    filterAndDisplayData();
 });
 
 function searchInJson(obj, term) {
@@ -43,15 +44,36 @@ function searchInJson(obj, term) {
     );
 }
 
+function filterAndDisplayData() {
+    if (!jsonData) return;
+    
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    let filteredData = jsonData;
+    
+    if (searchTerm) {
+        filteredData = searchInJson(filteredData, searchTerm);
+    }
+    
+    if (selectedMigrateValues.length > 0) {
+        filteredData = filteredData.filter(item => 
+            selectedMigrateValues.includes(item.Migrate)
+        );
+    }
+    
+    currentFilteredData = filteredData;
+    document.getElementById('cardContainer').dataset.showAll = 'false';
+    displayCards(currentFilteredData);
+}
+
 function displayCards(data) {
     const cardContainer = document.getElementById('cardContainer');
     cardContainer.innerHTML = '';
 
     const showAll = cardContainer.dataset.showAll === 'true';
-    const itemsToShow = showAll ? data : data.slice(0, 100);
+    const itemsToShow = showAll ? data : data.slice(0, 50);
 
-    if (data.length > 100 && !showAll) {
-        const remainingCount = data.length - 100;
+    if (data.length > 50 && !showAll) {
+        const remainingCount = data.length - 50;
         const loadMoreContainer = document.createElement('div');
         loadMoreContainer.className = 'col-12 text-center mb-4';
         loadMoreContainer.innerHTML = `
@@ -94,7 +116,10 @@ function loadAllItems() {
 function clearData() {
     localStorage.removeItem('cardData');
     jsonData = null;
+    currentFilteredData = null;
+    selectedMigrateValues = [];
     document.getElementById('cardContainer').innerHTML = '';
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
+    document.getElementById('migrateFilter').selectedIndex = -1;
 } 
