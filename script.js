@@ -1,4 +1,5 @@
 let jsonData = null;
+let currentFilteredData = null;
 
 window.addEventListener('load', function() {
     const savedData = localStorage.getItem('cardData');
@@ -28,8 +29,9 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
 document.getElementById('searchInput').addEventListener('input', function(e) {
     if (jsonData) {
         const searchTerm = e.target.value.toLowerCase();
-        const filteredData = searchInJson(jsonData, searchTerm);
-        displayCards(filteredData);
+        currentFilteredData = searchInJson(jsonData, searchTerm);
+        document.getElementById('cardContainer').dataset.showAll = 'false';
+        displayCards(currentFilteredData);
     }
 });
 
@@ -45,10 +47,11 @@ function displayCards(data) {
     const cardContainer = document.getElementById('cardContainer');
     cardContainer.innerHTML = '';
 
-    const itemsToShow = data.slice(0, 500);
+    const showAll = cardContainer.dataset.showAll === 'true';
+    const itemsToShow = showAll ? data : data.slice(0, 100);
 
-    if (data.length > 500) {
-        const remainingCount = data.length - 500;
+    if (data.length > 100 && !showAll) {
+        const remainingCount = data.length - 100;
         const loadMoreContainer = document.createElement('div');
         loadMoreContainer.className = 'col-12 text-center mb-4';
         loadMoreContainer.innerHTML = `
@@ -79,9 +82,11 @@ function displayCards(data) {
 }
 
 function loadAllItems() {
-    if (jsonData) {
-        const cardContainer = document.getElementById('cardContainer');
-        cardContainer.innerHTML = '';
+    const cardContainer = document.getElementById('cardContainer');
+    cardContainer.dataset.showAll = 'true';
+    if (currentFilteredData) {
+        displayCards(currentFilteredData);
+    } else if (jsonData) {
         displayCards(jsonData);
     }
 }
