@@ -25,7 +25,17 @@
                 <option value="VM">VM</option>
             </select>
         </div>
-        <input type="text" id="searchInput" class="form-control" placeholder="Search...">
+        <div class="mb-3">
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search...">
+                <div class="input-group-append">
+                    <div class="input-group-text">
+                        <input type="checkbox" id="regexToggle" class="form-check-input me-2">
+                        <label class="form-check-label" for="regexToggle">Regex</label>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="cardContainer" class="row"></div>
     </div>
     <footer style="text-align: center; padding: 20px; background-color: #f1f1f1; color: #555;">

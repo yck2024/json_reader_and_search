@@ -36,10 +36,24 @@ document.getElementById('migrateFilter').addEventListener('change', function(e) 
     filterAndDisplayData();
 });
 
-function searchInJson(obj, term) {
-    return obj.filter(item => 
-        Object.values(item).some(value => 
-            String(value).toLowerCase().includes(term)
+function searchInJson(obj, term, isRegex) {
+    if (isRegex) {
+        try {
+            const regex = new RegExp(term, 'i');
+            return obj.filter(item =>
+                Object.values(item).some(value =>
+                    regex.test(String(value))
+                )
+            );
+        } catch (e) {
+            alert('Invalid regular expression');
+            return obj;
+        }
+    }
+    
+    return obj.filter(item =>
+        Object.values(item).some(value =>
+            String(value).toLowerCase().includes(term.toLowerCase())
         )
     );
 }
@@ -47,11 +61,12 @@ function searchInJson(obj, term) {
 function filterAndDisplayData() {
     if (!jsonData) return;
     
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchTerm = document.getElementById('searchInput').value;
+    const isRegex = document.getElementById('regexToggle').checked;
     let filteredData = jsonData;
     
     if (searchTerm) {
-        filteredData = searchInJson(filteredData, searchTerm);
+        filteredData = searchInJson(filteredData, searchTerm, isRegex);
     }
     
     if (selectedMigrateValues.length > 0) {

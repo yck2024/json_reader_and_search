@@ -24,4 +24,17 @@ body {
 
 #migrateFilter option {
     padding: 8px;
+}
+
+.input-group-text {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background-color: #f8f9fa;
+    border: 1px solid #ced4da;
+    border-left: none;
+}
+
+.form-check-input {
+    margin-right: 5px;
 } 
