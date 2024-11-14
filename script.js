@@ -1,9 +1,16 @@
 let jsonData = null;
 let currentFilteredData = null;
 let selectedMigrateValues = [];
+let pinnedCards = new Set();
 
 window.addEventListener('load', function() {
     const savedData = localStorage.getItem('cardData');
+    const savedPins = localStorage.getItem('pinnedCards');
+    
+    if (savedPins) {
+        pinnedCards = new Set(JSON.parse(savedPins).map(String));
+    }
+    
     if (savedData) {
         jsonData = JSON.parse(savedData);
         displayCards(jsonData);
@@ -34,6 +41,15 @@ document.getElementById('searchInput').addEventListener('input', function(e) {
 document.getElementById('migrateFilter').addEventListener('change', function(e) {
     selectedMigrateValues = Array.from(e.target.selectedOptions).map(option => option.value);
     filterAndDisplayData();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === '/' || e.key === '？') {
+        if (document.activeElement !== document.getElementById('searchInput')) {
+            e.preventDefault();
+            document.getElementById('searchInput').focus();
+        }
+    }
 });
 
 function searchInJson(obj, term, isRegex) {
@@ -85,10 +101,28 @@ function displayCards(data) {
     cardContainer.innerHTML = '';
 
     const showAll = cardContainer.dataset.showAll === 'true';
-    const itemsToShow = showAll ? data : data.slice(0, 50);
+    
+    console.log('Current pinned cards:', Array.from(pinnedCards));
+    
+    const pinnedItems = data.filter(item => pinnedCards.has(String(item['Ref'])));
+    const unpinnedItems = data.filter(item => !pinnedCards.has(String(item['Ref'])));
+    
+    console.log('Pinned items:', pinnedItems);
+    console.log('Unpinned items:', unpinnedItems);
+    
+    const itemsToShow = showAll ? unpinnedItems : unpinnedItems.slice(0, 50);
 
-    if (data.length > 50 && !showAll) {
-        const remainingCount = data.length - 50;
+    pinnedItems.forEach(item => createCard(item, cardContainer, true));
+
+    if (pinnedItems.length > 0 && unpinnedItems.length > 0) {
+        const divider = document.createElement('div');
+        divider.className = 'col-12';
+        divider.innerHTML = '<hr class="pinned-divider"><p class="text-center text-muted">Unpinned Items</p>';
+        cardContainer.appendChild(divider);
+    }
+
+    if (unpinnedItems.length > 50 && !showAll) {
+        const remainingCount = unpinnedItems.length - 50;
         const loadMoreContainer = document.createElement('div');
         loadMoreContainer.className = 'col-12 text-center mb-4';
         loadMoreContainer.innerHTML = `
@@ -99,23 +133,54 @@ function displayCards(data) {
         cardContainer.appendChild(loadMoreContainer);
     }
 
-    itemsToShow.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'col-md-4 mb-4';
-        card.innerHTML = `
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Item ${item['No.']}</h5>
-                    ${Object.entries(item).map(([key, value]) => 
-                        value !== null && value !== '' ? 
-                        `<p class="card-text"><strong>${key}:</strong> ${value}</p>` : 
-                        ''
-                    ).join('')}
+    itemsToShow.forEach(item => createCard(item, cardContainer, false));
+}
+
+function createCard(item, container, isPinned) {
+    const card = document.createElement('div');
+    card.className = 'col-md-4 mb-4';
+    
+    const itemRef = String(item['Ref']);
+    
+    console.log('Creating card for item:', itemRef, 'isPinned:', isPinned);
+    
+    card.innerHTML = `
+        <div class="card ${isPinned ? 'pinned' : ''}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0">Item ${item['No.']}</h5>
+                    <button class="btn btn-sm pin-btn" onclick="togglePin('${itemRef}')">
+                        <i class="fas fa-thumbtack ${isPinned ? 'pinned' : ''}"></i>
+                    </button>
                 </div>
+                ${Object.entries(item).map(([key, value]) => 
+                    value !== null && value !== '' ? 
+                    `<p class="card-text"><strong>${key}:</strong> ${value}</p>` : 
+                    ''
+                ).join('')}
             </div>
-        `;
-        cardContainer.appendChild(card);
-    });
+        </div>
+    `;
+    container.appendChild(card);
+}
+
+function togglePin(itemNo) {
+    console.log('Toggling pin for item:', itemNo);
+    if (pinnedCards.has(itemNo)) {
+        console.log('Unpinning item');
+        pinnedCards.delete(itemNo);
+    } else {
+        console.log('Pinning item');
+        pinnedCards.add(itemNo);
+    }
+    
+    localStorage.setItem('pinnedCards', JSON.stringify(Array.from(pinnedCards)));
+    
+    if (currentFilteredData) {
+        displayCards(currentFilteredData);
+    } else {
+        displayCards(jsonData);
+    }
 }
 
 function loadAllItems() {
@@ -130,9 +195,11 @@ function loadAllItems() {
 
 function clearData() {
     localStorage.removeItem('cardData');
+    localStorage.removeItem('pinnedCards');
     jsonData = null;
     currentFilteredData = null;
     selectedMigrateValues = [];
+    pinnedCards.clear();
     document.getElementById('cardContainer').innerHTML = '';
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
