@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center mb-4">JSON Card Viewer</h1>
+        <h2 class="text-center mb-4">JSON Card Viewer</h2>
         <div class="d-flex justify-content-between mb-3">
             <input type="file" id="fileInput" class="form-control" accept=".json" style="width: 80%;">
             <button id="clearButton" class="btn btn-danger" onclick="clearData()">Clear Data</button>
@@ -28,6 +28,11 @@
         <input type="text" id="searchInput" class="form-control" placeholder="Search...">
         <div id="cardContainer" class="row"></div>
     </div>
+    <footer style="text-align: center; padding: 20px; background-color: #f1f1f1; color: #555;">
+        <p>&copy; 2024 YK All Rights Reserved.</p>
+        <p>Disclaimer: This website processes and displays data in a specified JSON format and stores it locally in your browser. No data is transmitted or stored externally.</p>
+      </footer>
+      
     <script src="script.js"></script>
 </body>
 </html>
