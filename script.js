@@ -110,13 +110,11 @@ function displayCards(data) {
 
     const showAll = cardContainer.dataset.showAll === 'true';
     
-    console.log('Current pinned cards:', Array.from(pinnedCards));
-    
     const pinnedItems = data.filter(item => pinnedCards.has(String(item['Ref'])));
     const unpinnedItems = data.filter(item => !pinnedCards.has(String(item['Ref'])));
     
-    console.log('Pinned items:', pinnedItems);
-    console.log('Unpinned items:', unpinnedItems);
+    const totalCount = document.getElementById('totalCount');
+    totalCount.textContent = `Showing ${pinnedItems.length + (showAll ? unpinnedItems.length : Math.min(unpinnedItems.length, 50))} cards (${pinnedItems.length} pinned, ${unpinnedItems.length} unpinned)`;
     
     const itemsToShow = showAll ? unpinnedItems : unpinnedItems.slice(0, 50);
 
