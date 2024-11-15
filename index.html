@@ -28,7 +28,12 @@
         </div>
         <div class="mb-3">
             <div class="input-group">
-                <input type="text" id="searchInput" class="form-control" placeholder="Search... (Press '/' to focus)">
+                <input type="text" 
+                       id="searchInput" 
+                       class="form-control" 
+                       placeholder="Search... (Press '/' to focus)"
+                       list="searchHistory">
+                <datalist id="searchHistory"></datalist>
                 <div class="input-group-append">
                     <div class="input-group-text">
                         <input type="checkbox" id="regexToggle" class="form-check-input me-2">

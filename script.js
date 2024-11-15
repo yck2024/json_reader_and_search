@@ -2,6 +2,8 @@ let jsonData = null;
 let currentFilteredData = null;
 let selectedMigrateValues = [];
 let pinnedCards = new Set();
+const MAX_HISTORY_ITEMS = 15;
+let searchHistory = [];
 
 window.addEventListener('load', function() {
     const savedData = localStorage.getItem('cardData');
@@ -15,6 +17,8 @@ window.addEventListener('load', function() {
         jsonData = JSON.parse(savedData);
         displayCards(jsonData);
     }
+    
+    loadSearchHistory();
 });
 
 document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -36,6 +40,10 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
 
 document.getElementById('searchInput').addEventListener('input', function(e) {
     filterAndDisplayData();
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(() => {
+        saveSearchHistory(this.value);
+    }, 1500);
 });
 
 document.getElementById('migrateFilter').addEventListener('change', function(e) {
@@ -196,12 +204,61 @@ function loadAllItems() {
 function clearData() {
     localStorage.removeItem('cardData');
     localStorage.removeItem('pinnedCards');
+    localStorage.removeItem('searchHistory');
     jsonData = null;
     currentFilteredData = null;
     selectedMigrateValues = [];
     pinnedCards.clear();
+    searchHistory = [];
+    updateSearchHistoryDisplay();
     document.getElementById('cardContainer').innerHTML = '';
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
     document.getElementById('migrateFilter').selectedIndex = -1;
+}
+
+function loadSearchHistory() {
+    const savedHistory = localStorage.getItem('searchHistory');
+    if (savedHistory) {
+        searchHistory = JSON.parse(savedHistory);
+        updateSearchHistoryDisplay();
+    }
+}
+
+// Add this helper function to detect Japanese characters
+function containsJapanese(text) {
+    // This regex matches hiragana, katakana, and kanji
+    return /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf]/.test(text);
+}
+
+function saveSearchHistory(searchTerm) {
+    if (!searchTerm.trim()) return;
+    
+    // Check length requirements based on whether it contains Japanese
+    const isJapanese = containsJapanese(searchTerm);
+    const minLength = isJapanese ? 2 : 3;
+    
+    if (searchTerm.length < minLength) return;
+    
+    // Remove the term if it already exists (to avoid duplicates)
+    searchHistory = searchHistory.filter(term => term !== searchTerm);
+    
+    // Add the new term at the beginning
+    searchHistory.unshift(searchTerm);
+    
+    // Keep only the latest MAX_HISTORY_ITEMS items
+    searchHistory = searchHistory.slice(0, MAX_HISTORY_ITEMS);
+    
+    // Save to localStorage
+    localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+    
+    // Update the datalist
+    updateSearchHistoryDisplay();
+}
+
+function updateSearchHistoryDisplay() {
+    const datalist = document.getElementById('searchHistory');
+    datalist.innerHTML = searchHistory
+        .map(term => `<option value="${term}">`)
+        .join('');
 } 

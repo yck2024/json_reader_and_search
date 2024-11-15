@@ -68,4 +68,23 @@ body {
 .pinned-divider {
     margin: 2rem 0;
     border-top: 2px dashed #dee2e6;
+}
+
+/* Add these styles */
+input[list]::-webkit-calendar-picker-indicator {
+    display: none;
+}
+
+#searchInput {
+    margin-bottom: 20px;
+}
+
+/* Optional: Style the datalist options (only works in Firefox) */
+option {
+    padding: 8px;
+    cursor: pointer;
+}
+
+option:hover {
+    background-color: #f8f9fa;
 } 
