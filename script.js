@@ -70,7 +70,7 @@ function searchInJson(obj, term, isRegex) {
                 )
             );
         } catch (e) {
-            alert('Invalid regular expression');
+            console.error('Invalid regular expression');
             return obj;
         }
     }
