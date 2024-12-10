@@ -6,6 +6,13 @@ const MAX_HISTORY_ITEMS = 15;
 let searchHistory = [];
 let selectedColumn = 'Migrate';
 let filterValues = {};
+let uploadedFiles = {};  // Object to store multiple JSON files
+let currentFileName = null;  // Currently selected file name
+let db;
+const DB_NAME = 'JsonViewerDB';
+const DB_VERSION = 1;
+const STORE_FILES = 'files';
+const STORE_SETTINGS = 'settings';
 
 const moduleColors = {
     // Blues
@@ -58,32 +65,139 @@ function getContrastColor(hexcolor) {
     return luminance > 0.5 ? '#000000' : '#ffffff';
 }
 
-window.addEventListener('load', function() {
-    const savedData = localStorage.getItem('cardData');
-    const savedPins = localStorage.getItem('pinnedCards');
-    
-    if (savedPins) {
-        pinnedCards = new Set(JSON.parse(savedPins).map(String));
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            db = request.result;
+            resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // Create stores if they don't exist
+            if (!db.objectStoreNames.contains(STORE_FILES)) {
+                db.createObjectStore(STORE_FILES);
+            }
+            if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
+                db.createObjectStore(STORE_SETTINGS);
+            }
+        };
+    });
+}
+
+window.addEventListener('load', async function() {
+    try {
+        await initDB();
+        
+        // Load settings
+        const settings = await getFromDB(STORE_SETTINGS, 'pinnedCards');
+        if (settings) {
+            pinnedCards = new Set(settings.map(String));
+        }
+        
+        // Load current file
+        const savedCurrentFile = await getFromDB(STORE_SETTINGS, 'currentFileName');
+        if (savedCurrentFile) {
+            currentFileName = savedCurrentFile;
+            const fileData = await getFromDB(STORE_FILES, currentFileName);
+            if (fileData) {
+                uploadedFiles[currentFileName] = fileData;
+                jsonData = fileData;
+                updateColumnSelector();
+                updateFilterOptions();
+                displayCards(jsonData);
+            }
+        }
+        
+        // Load files list
+        const files = await getAllKeysFromDB(STORE_FILES);
+        for (const fileName of files) {
+            if (!uploadedFiles[fileName]) {
+                uploadedFiles[fileName] = await getFromDB(STORE_FILES, fileName);
+            }
+        }
+        
+        updateFileSelector();
+        loadSearchHistory();
+        
+    } catch (error) {
+        console.error('Error initializing database:', error);
     }
-    
-    if (savedData) {
-        jsonData = JSON.parse(savedData);
-        updateColumnSelector();
-        updateFilterOptions();
-        displayCards(jsonData);
-    }
-    
-    loadSearchHistory();
 });
 
-document.getElementById('fileInput').addEventListener('change', function(e) {
+function saveToDB(storeName, key, value) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.put(value, key);
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+function getFromDB(storeName, key) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.get(key);
+        
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+function getAllKeysFromDB(storeName) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.getAllKeys();
+        
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+function deleteFromDB(storeName, key) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.delete(key);
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+document.getElementById('fileInput').addEventListener('change', async function(e) {
     const file = e.target.files[0];
     if (file) {
+        let fileName = prompt('Enter a name for this file:', file.name.replace('.json', ''));
+        if (!fileName) return;
+        
+        while (uploadedFiles.hasOwnProperty(fileName)) {
+            fileName = prompt('Name already exists. Please enter a different name:', fileName);
+            if (!fileName) return;
+        }
+        
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
-                jsonData = JSON.parse(e.target.result);
-                localStorage.setItem('cardData', JSON.stringify(jsonData));
+                const data = JSON.parse(e.target.result);
+                uploadedFiles[fileName] = data;
+                currentFileName = fileName;
+                
+                // Save to IndexedDB
+                await saveToDB(STORE_FILES, fileName, data);
+                await saveToDB(STORE_SETTINGS, 'currentFileName', fileName);
+                
+                // Update UI
+                updateFileSelector();
+                jsonData = data;
                 updateColumnSelector();
                 updateFilterOptions();
                 displayCards(jsonData);
@@ -293,17 +407,14 @@ function createCard(item, container, isPinned) {
     container.appendChild(card);
 }
 
-function togglePin(itemNo) {
-    console.log('Toggling pin for item:', itemNo);
+async function togglePin(itemNo) {
     if (pinnedCards.has(itemNo)) {
-        console.log('Unpinning item');
         pinnedCards.delete(itemNo);
     } else {
-        console.log('Pinning item');
         pinnedCards.add(itemNo);
     }
     
-    localStorage.setItem('pinnedCards', JSON.stringify(Array.from(pinnedCards)));
+    await saveToDB(STORE_SETTINGS, 'pinnedCards', Array.from(pinnedCards));
     
     if (currentFilteredData) {
         displayCards(currentFilteredData);
@@ -322,20 +433,30 @@ function loadAllItems() {
     }
 }
 
-function clearData() {
-    localStorage.removeItem('cardData');
-    localStorage.removeItem('pinnedCards');
-    localStorage.removeItem('searchHistory');
+async function clearData() {
+    if (!confirm('Are you sure you want to clear all data?')) return;
+    
+    // Clear IndexedDB stores
+    const transaction = db.transaction([STORE_FILES, STORE_SETTINGS], 'readwrite');
+    transaction.objectStore(STORE_FILES).clear();
+    transaction.objectStore(STORE_SETTINGS).clear();
+    
+    // Reset application state
+    uploadedFiles = {};
+    currentFileName = null;
     jsonData = null;
     currentFilteredData = null;
     selectedMigrateValues = [];
     pinnedCards.clear();
     searchHistory = [];
+    
+    // Update UI
     updateSearchHistoryDisplay();
+    updateFileSelector();
     document.getElementById('cardContainer').innerHTML = '';
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
-    document.getElementById('migrateFilter').selectedIndex = -1;
+    document.getElementById('migrateFilter').value = '';
     filterValues = {};
     updateActiveFilters();
 }
@@ -464,4 +585,29 @@ function removeFilter(column, valueToRemove) {
         updateActiveFilters();
         filterAndDisplayData();
     }
-} 
+}
+
+// Add new function to update file selector
+function updateFileSelector() {
+    const fileSelector = document.getElementById('fileSelector');
+    fileSelector.innerHTML = '';
+    
+    Object.keys(uploadedFiles).forEach(fileName => {
+        const option = document.createElement('option');
+        option.value = fileName;
+        option.textContent = fileName;
+        if (fileName === currentFileName) option.selected = true;
+        fileSelector.appendChild(option);
+    });
+}
+
+// Add event listener for file selection
+document.getElementById('fileSelector').addEventListener('change', function(e) {
+    currentFileName = e.target.value;
+    jsonData = uploadedFiles[currentFileName];
+    localStorage.setItem('currentFileName', currentFileName);
+    
+    updateColumnSelector();
+    updateFilterOptions();
+    displayCards(jsonData);
+}); 

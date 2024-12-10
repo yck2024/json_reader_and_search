@@ -12,7 +12,10 @@
     <div class="container">
         <h2 class="text-center mb-4">JSON Card Viewer</h2>
         <div class="d-flex justify-content-between mb-3">
-            <input type="file" id="fileInput" class="form-control" accept=".json" style="width: 80%;">
+            <input type="file" id="fileInput" class="form-control" accept=".json" style="width: 60%;">
+            <select id="fileSelector" class="form-select" style="width: 15%;">
+                <option value="">Select a file...</option>
+            </select>
             <button id="clearButton" class="btn btn-danger" onclick="clearData()">Clear Data</button>
         </div>
         <div class="mb-3">
@@ -28,7 +31,7 @@
                 <datalist id="filterOptions"></datalist>
             </div>
         </div>
-        <div id="activeFilters" class="mt-2"></div>
+        <div id="activeFilters" class="mb-3"></div>
         <div class="mb-3">
             <div class="input-group">
                 <input type="text" 
