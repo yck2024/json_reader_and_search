@@ -7,6 +7,57 @@ let searchHistory = [];
 let selectedColumn = 'Migrate';
 let filterValues = {};
 
+const moduleColors = {
+    // Blues
+    'Organization': '#e3f2fd',      // Light blue
+    'Contact': '#bbdefb',           // Lighter blue
+    
+    // Greens
+    'Invention': '#e8f5e9',         // Light green
+    'InventionInventor': '#c8e6c9', // Lighter green
+    
+    // Purples
+    'Patent': '#f3e5f5',           // Light purple
+    'PatentInventor': '#e1bee7',    // Lighter purple
+    'PatentFamily': '#d1c4e9',      // Different purple
+    'Patent_FieldDate_and_NAFD': '#ede7f6', // Another purple shade
+    'PatentPharmaRecords': '#e8eaf6', // Blue-purple
+    
+    // Oranges
+    'Brand': '#fff3e0',            // Light orange
+    'Mark': '#ffe0b2',             // Lighter orange
+    
+    // Reds
+    'TMApplication': '#ffebee',     // Light red
+    'TMFamily': '#ffcdd2',          // Lighter red
+    
+    // Teals
+    'Document': '#e0f2f1',         // Light teal
+    'Task': '#b2dfdb',             // Lighter teal
+    
+    // Yellows
+    'Event': '#fffde7',            // Light yellow
+    'Format': '#fff9c4',           // Lighter yellow
+    
+    // Browns
+    'Annuities': '#efebe9',        // Light brown
+    
+    'default': '#ffffff'           // White for unknown modules
+};
+
+function getContrastColor(hexcolor) {
+    // Convert hex to RGB
+    const r = parseInt(hexcolor.slice(1,3), 16);
+    const g = parseInt(hexcolor.slice(3,5), 16);
+    const b = parseInt(hexcolor.slice(5,7), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black or white based on background luminance
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+}
+
 window.addEventListener('load', function() {
     const savedData = localStorage.getItem('cardData');
     const savedPins = localStorage.getItem('pinnedCards');
@@ -214,21 +265,26 @@ function createCard(item, container, isPinned) {
     card.className = 'col-md-4 mb-4';
     
     const itemRef = String(item['Ref']);
-    
-    console.log('Creating card for item:', itemRef, 'isPinned:', isPinned);
+    const moduleColor = moduleColors[item['module']] || moduleColors['default'];
+    const textColor = getContrastColor(moduleColor);
     
     card.innerHTML = `
-        <div class="card ${isPinned ? 'pinned' : ''}">
+        <div class="card ${isPinned ? 'pinned' : ''}" style="background-color: ${moduleColor}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Item ${item['No.']}</h5>
-                    <button class="btn btn-sm pin-btn" onclick="togglePin('${itemRef}')">
-                        <i class="fas fa-thumbtack ${isPinned ? 'pinned' : ''}"></i>
-                    </button>
+                    <h5 class="card-title mb-0" style="color: ${textColor}">Item ${item['No.']}</h5>
+                    <div class="d-flex align-items-center">
+                        <span class="module-badge" style="background-color: ${moduleColor}; border: 1px solid ${textColor}; color: ${textColor}; margin-right: 10px;">
+                            ${item['module']}
+                        </span>
+                        <button class="btn btn-sm pin-btn" onclick="togglePin('${itemRef}')">
+                            <i class="fas fa-thumbtack ${isPinned ? 'pinned' : ''}" style="color: ${textColor}"></i>
+                        </button>
+                    </div>
                 </div>
                 ${Object.entries(item).map(([key, value]) => 
                     value !== null && value !== '' ? 
-                    `<p class="card-text"><strong>${key}:</strong> ${value}</p>` : 
+                    `<p class="card-text" style="color: ${textColor}"><strong>${key}:</strong> ${value}</p>` : 
                     ''
                 ).join('')}
             </div>
