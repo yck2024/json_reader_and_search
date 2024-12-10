@@ -4,6 +4,8 @@ let selectedMigrateValues = [];
 let pinnedCards = new Set();
 const MAX_HISTORY_ITEMS = 15;
 let searchHistory = [];
+let selectedColumn = 'Migrate';
+let filterValues = {};
 
 window.addEventListener('load', function() {
     const savedData = localStorage.getItem('cardData');
@@ -15,6 +17,8 @@ window.addEventListener('load', function() {
     
     if (savedData) {
         jsonData = JSON.parse(savedData);
+        updateColumnSelector();
+        updateFilterOptions();
         displayCards(jsonData);
     }
     
@@ -29,6 +33,8 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
             try {
                 jsonData = JSON.parse(e.target.result);
                 localStorage.setItem('cardData', JSON.stringify(jsonData));
+                updateColumnSelector();
+                updateFilterOptions();
                 displayCards(jsonData);
             } catch (error) {
                 alert('Error parsing JSON: ' + error);
@@ -46,8 +52,67 @@ document.getElementById('searchInput').addEventListener('input', function(e) {
     }, 1500);
 });
 
-document.getElementById('migrateFilter').addEventListener('change', function(e) {
-    selectedMigrateValues = Array.from(e.target.selectedOptions).map(option => option.value);
+document.getElementById('columnSelector').addEventListener('change', function(e) {
+    selectedColumn = e.target.value;
+    updateFilterOptions();
+    document.getElementById('migrateFilter').value = filterValues[selectedColumn]?.join(', ') || '';
+});
+
+document.getElementById('migrateFilter').addEventListener('input', function(e) {
+    if (!selectedColumn) return;
+    
+    // Get cursor position and current value
+    const cursorPosition = this.selectionStart;
+    const currentValue = this.value;
+    
+    // Split the value by commas
+    const parts = currentValue.split(',');
+    
+    // Find which part the cursor is in
+    let currentPartIndex = 0;
+    let position = 0;
+    for (let i = 0; i < parts.length; i++) {
+        position += parts[i].length + 1; // +1 for the comma
+        if (cursorPosition <= position) {
+            currentPartIndex = i;
+            break;
+        }
+    }
+    
+    // Get the current part being typed
+    const currentPart = parts[currentPartIndex].trim();
+    
+    // Update the input's list attribute to show suggestions only for the current part
+    if (currentPart) {
+        // Get all unique values for the selected column
+        const uniqueValues = [...new Set(jsonData.map(item => item[selectedColumn]))];
+        const filterDatalist = document.getElementById('filterOptions');
+        filterDatalist.innerHTML = '';
+        
+        // Add filtered options based on current part
+        uniqueValues.forEach(value => {
+            if (value !== null && value !== undefined) {
+                const stringValue = String(value);
+                if (stringValue.toLowerCase().includes(currentPart.toLowerCase())) {
+                    const option = document.createElement('option');
+                    option.value = parts.map((p, i) => 
+                        i === currentPartIndex ? stringValue : p.trim()
+                    ).join(', ');
+                    filterDatalist.appendChild(option);
+                }
+            }
+        });
+    }
+    
+    // Update the filter values
+    const values = currentValue.split(',').map(v => v.trim()).filter(v => v);
+    if (values.length > 0) {
+        filterValues[selectedColumn] = values;
+    } else {
+        delete filterValues[selectedColumn];
+    }
+    
+    updateActiveFilters();
     filterAndDisplayData();
 });
 
@@ -93,9 +158,11 @@ function filterAndDisplayData() {
         filteredData = searchInJson(filteredData, searchTerm, isRegex);
     }
     
-    if (selectedMigrateValues.length > 0) {
+    if (Object.keys(filterValues).length > 0) {
         filteredData = filteredData.filter(item => 
-            selectedMigrateValues.includes(item.Migrate)
+            Object.entries(filterValues).every(([column, values]) => 
+                values.includes(String(item[column]))
+            )
         );
     }
     
@@ -213,6 +280,8 @@ function clearData() {
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
     document.getElementById('migrateFilter').selectedIndex = -1;
+    filterValues = {};
+    updateActiveFilters();
 }
 
 function loadSearchHistory() {
@@ -259,4 +328,84 @@ function updateSearchHistoryDisplay() {
     datalist.innerHTML = searchHistory
         .map(term => `<option value="${term}">`)
         .join('');
+}
+
+function updateColumnSelector() {
+    if (!jsonData || jsonData.length === 0) return;
+    
+    const columnSelector = document.getElementById('columnSelector');
+    columnSelector.innerHTML = '';
+    
+    // Get all unique keys from the first item
+    const keys = Object.keys(jsonData[0]);
+    
+    keys.forEach(key => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = key;
+        if (key === selectedColumn) option.selected = true;
+        columnSelector.appendChild(option);
+    });
+}
+
+function updateFilterOptions() {
+    if (!jsonData || jsonData.length === 0) return;
+    
+    const filterDatalist = document.getElementById('filterOptions');
+    filterDatalist.innerHTML = '';
+    
+    // Get unique values for the selected column
+    const uniqueValues = [...new Set(jsonData.map(item => item[selectedColumn]))];
+    
+    uniqueValues.forEach(value => {
+        if (value !== null && value !== undefined) {
+            const option = document.createElement('option');
+            option.value = String(value);
+            filterDatalist.appendChild(option);
+        }
+    });
+    
+    // Update input with current filters for this column
+    const filterInput = document.getElementById('migrateFilter');
+    filterInput.value = filterValues[selectedColumn]?.join(', ') || '';
+    filterInput.placeholder = `Type multiple values separated by commas...`;
+    
+    updateActiveFilters();
+}
+
+// Add this function to update the active filters display
+function updateActiveFilters() {
+    const activeFiltersContainer = document.getElementById('activeFilters');
+    activeFiltersContainer.innerHTML = '';
+
+    Object.entries(filterValues).forEach(([column, values]) => {
+        values.forEach(value => {
+            const filterTag = document.createElement('span');
+            filterTag.className = 'filter-tag';
+            filterTag.innerHTML = `
+                <span class="column-name">${column}:</span>
+                <span class="filter-value">${value}</span>
+                <span class="remove-filter" onclick="removeFilter('${column}', '${value}')">×</span>
+            `;
+            activeFiltersContainer.appendChild(filterTag);
+        });
+    });
+}
+
+// Add this function to remove individual filters
+function removeFilter(column, valueToRemove) {
+    if (filterValues[column]) {
+        filterValues[column] = filterValues[column].filter(value => value !== valueToRemove);
+        if (filterValues[column].length === 0) {
+            delete filterValues[column];
+        }
+        
+        // Update the input if it's the current selected column
+        if (column === selectedColumn) {
+            document.getElementById('migrateFilter').value = filterValues[column]?.join(', ') || '';
+        }
+        
+        updateActiveFilters();
+        filterAndDisplayData();
+    }
 } 

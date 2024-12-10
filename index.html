@@ -16,16 +16,19 @@
             <button id="clearButton" class="btn btn-danger" onclick="clearData()">Clear Data</button>
         </div>
         <div class="mb-3">
-            <select id="migrateFilter" class="form-select" multiple>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-                <option value="?">?</option>
-                <option value="Info">Info</option>
-                <option value="N/A">N/A</option>
-                <option value="Title">Title</option>
-                <option value="VM">VM</option>
-            </select>
+            <div class="input-group">
+                <select id="columnSelector" class="form-select" style="max-width: 200px;">
+                    <option value="Migrate">Migrate</option>
+                </select>
+                <input type="text" 
+                       id="migrateFilter" 
+                       class="form-control" 
+                       placeholder="Type multiple values separated by commas..."
+                       list="filterOptions">
+                <datalist id="filterOptions"></datalist>
+            </div>
         </div>
+        <div id="activeFilters" class="mt-2"></div>
         <div class="mb-3">
             <div class="input-group">
                 <input type="text" 
