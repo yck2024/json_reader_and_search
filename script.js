@@ -6,6 +6,8 @@ const MAX_HISTORY_ITEMS = 15;
 let searchHistory = [];
 let selectedColumn = 'Migrate';
 let filterValues = {};
+let uploadedFiles = {};  // Object to store multiple JSON files
+let currentFileName = null;  // Currently selected file name
 
 const moduleColors = {
     // Blues
@@ -59,18 +61,24 @@ function getContrastColor(hexcolor) {
 }
 
 window.addEventListener('load', function() {
-    const savedData = localStorage.getItem('cardData');
+    const savedFiles = localStorage.getItem('uploadedFiles');
+    const savedCurrentFile = localStorage.getItem('currentFileName');
     const savedPins = localStorage.getItem('pinnedCards');
     
     if (savedPins) {
         pinnedCards = new Set(JSON.parse(savedPins).map(String));
     }
     
-    if (savedData) {
-        jsonData = JSON.parse(savedData);
-        updateColumnSelector();
-        updateFilterOptions();
-        displayCards(jsonData);
+    if (savedFiles) {
+        uploadedFiles = JSON.parse(savedFiles);
+        if (savedCurrentFile && uploadedFiles[savedCurrentFile]) {
+            currentFileName = savedCurrentFile;
+            jsonData = uploadedFiles[currentFileName];
+            updateColumnSelector();
+            updateFilterOptions();
+            displayCards(jsonData);
+        }
+        updateFileSelector();
     }
     
     loadSearchHistory();
@@ -79,11 +87,30 @@ window.addEventListener('load', function() {
 document.getElementById('fileInput').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
+        // Prompt user for a custom name
+        let fileName = prompt('Enter a name for this file:', file.name.replace('.json', ''));
+        if (!fileName) return;  // User cancelled the prompt
+        
+        // Ensure unique name
+        while (uploadedFiles.hasOwnProperty(fileName)) {
+            fileName = prompt('Name already exists. Please enter a different name:', fileName);
+            if (!fileName) return;  // User cancelled the prompt
+        }
+        
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                jsonData = JSON.parse(e.target.result);
-                localStorage.setItem('cardData', JSON.stringify(jsonData));
+                const data = JSON.parse(e.target.result);
+                uploadedFiles[fileName] = data;
+                currentFileName = fileName;
+                
+                // Save to localStorage
+                localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+                localStorage.setItem('currentFileName', currentFileName);
+                
+                // Update UI
+                updateFileSelector();
+                jsonData = data;
                 updateColumnSelector();
                 updateFilterOptions();
                 displayCards(jsonData);
@@ -265,26 +292,24 @@ function createCard(item, container, isPinned) {
     card.className = 'col-md-4 mb-4';
     
     const itemRef = String(item['Ref']);
-    const moduleColor = moduleColors[item['module']] || moduleColors['default'];
-    const textColor = getContrastColor(moduleColor);
+    
+    // Get the module type and corresponding color
+    const moduleType = item['module'] || 'default';
+    const backgroundColor = moduleColors[moduleType] || moduleColors['default'];
+    const textColor = getContrastColor(backgroundColor);
     
     card.innerHTML = `
-        <div class="card ${isPinned ? 'pinned' : ''}" style="background-color: ${moduleColor}">
+        <div class="card ${isPinned ? 'pinned' : ''}" style="background-color: ${backgroundColor}; color: ${textColor}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0" style="color: ${textColor}">Item ${item['No.']}</h5>
-                    <div class="d-flex align-items-center">
-                        <span class="module-badge" style="background-color: ${moduleColor}; border: 1px solid ${textColor}; color: ${textColor}; margin-right: 10px;">
-                            ${item['module']}
-                        </span>
-                        <button class="btn btn-sm pin-btn" onclick="togglePin('${itemRef}')">
-                            <i class="fas fa-thumbtack ${isPinned ? 'pinned' : ''}" style="color: ${textColor}"></i>
-                        </button>
-                    </div>
+                    <h5 class="card-title mb-0">Item ${item['No.']}</h5>
+                    <button class="btn btn-sm pin-btn" onclick="togglePin('${itemRef}')">
+                        <i class="fas fa-thumbtack ${isPinned ? 'pinned' : ''}"></i>
+                    </button>
                 </div>
                 ${Object.entries(item).map(([key, value]) => 
                     value !== null && value !== '' ? 
-                    `<p class="card-text" style="color: ${textColor}"><strong>${key}:</strong> ${value}</p>` : 
+                    `<p class="card-text"><strong>${key}:</strong> ${value}</p>` : 
                     ''
                 ).join('')}
             </div>
@@ -323,19 +348,27 @@ function loadAllItems() {
 }
 
 function clearData() {
-    localStorage.removeItem('cardData');
+    if (!confirm('Are you sure you want to clear all data?')) return;
+    
+    localStorage.removeItem('uploadedFiles');
+    localStorage.removeItem('currentFileName');
     localStorage.removeItem('pinnedCards');
     localStorage.removeItem('searchHistory');
+    
+    uploadedFiles = {};
+    currentFileName = null;
     jsonData = null;
     currentFilteredData = null;
     selectedMigrateValues = [];
     pinnedCards.clear();
     searchHistory = [];
+    
     updateSearchHistoryDisplay();
+    updateFileSelector();
     document.getElementById('cardContainer').innerHTML = '';
     document.getElementById('fileInput').value = '';
     document.getElementById('searchInput').value = '';
-    document.getElementById('migrateFilter').selectedIndex = -1;
+    document.getElementById('migrateFilter').value = '';
     filterValues = {};
     updateActiveFilters();
 }
@@ -464,4 +497,29 @@ function removeFilter(column, valueToRemove) {
         updateActiveFilters();
         filterAndDisplayData();
     }
-} 
+}
+
+// Add new function to update file selector
+function updateFileSelector() {
+    const fileSelector = document.getElementById('fileSelector');
+    fileSelector.innerHTML = '';
+    
+    Object.keys(uploadedFiles).forEach(fileName => {
+        const option = document.createElement('option');
+        option.value = fileName;
+        option.textContent = fileName;
+        if (fileName === currentFileName) option.selected = true;
+        fileSelector.appendChild(option);
+    });
+}
+
+// Add event listener for file selection
+document.getElementById('fileSelector').addEventListener('change', function(e) {
+    currentFileName = e.target.value;
+    jsonData = uploadedFiles[currentFileName];
+    localStorage.setItem('currentFileName', currentFileName);
+    
+    updateColumnSelector();
+    updateFilterOptions();
+    displayCards(jsonData);
+}); 

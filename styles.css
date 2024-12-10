@@ -136,4 +136,10 @@ option:hover {
     font-size: 0.8rem;
     font-weight: 500;
 }
+
+/* Add these styles */
+#fileSelector {
+    margin-left: 10px;
+    margin-right: 10px;
+}
  
