@@ -346,8 +346,23 @@ function displayCards(data) {
     const unpinnedItems = data.filter(item => !pinnedCards.has(String(item['Ref'])));
     
     const totalCount = document.getElementById('totalCount');
-    totalCount.textContent = `Showing ${pinnedItems.length + (showAll ? unpinnedItems.length : Math.min(unpinnedItems.length, 50))} cards (${pinnedItems.length} pinned, ${unpinnedItems.length} unpinned)`;
+    const visibleCount = pinnedItems.length + (showAll ? unpinnedItems.length : Math.min(unpinnedItems.length, 50));
     
+    // Create clickable count display
+    totalCount.innerHTML = `
+        <a href="#" class="text-decoration-none" onclick="toggleRefNumbers(event)">
+            Showing ${visibleCount} cards (${pinnedItems.length} pinned, ${unpinnedItems.length} unpinned)
+        </a>
+        <div id="refNumbers" class="mt-2" style="display: none;"></div>
+    `;
+
+    // Store the reference numbers for currently visible items
+    const visibleItems = [
+        ...pinnedItems,
+        ...(showAll ? unpinnedItems : unpinnedItems.slice(0, 50))
+    ];
+    totalCount.dataset.refs = visibleItems.map(item => item['Ref']).join(', ');
+
     const itemsToShow = showAll ? unpinnedItems : unpinnedItems.slice(0, 50);
 
     pinnedItems.forEach(item => createCard(item, cardContainer, true));
@@ -610,4 +625,18 @@ document.getElementById('fileSelector').addEventListener('change', function(e) {
     updateColumnSelector();
     updateFilterOptions();
     displayCards(jsonData);
-}); 
+});
+
+// Add this new function
+function toggleRefNumbers(event) {
+    event.preventDefault();
+    const refNumbersDiv = document.getElementById('refNumbers');
+    const totalCount = document.getElementById('totalCount');
+    
+    if (refNumbersDiv.style.display === 'none') {
+        refNumbersDiv.style.display = 'block';
+        refNumbersDiv.textContent = `Ref Numbers: ${totalCount.dataset.refs}`;
+    } else {
+        refNumbersDiv.style.display = 'none';
+    }
+} 
